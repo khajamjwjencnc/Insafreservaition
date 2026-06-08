@@ -2,7 +2,7 @@
   "name": "Insaf Travels Voucher Generator",
   "short_name": "Insaf Travels",
   "description": "Hotel Booking Confirmation Voucher Generator",
-  "start_url": "./insaf-voucher-v2.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#1a3a6b",
   "theme_color": "#1a3a6b",
