@@ -1,9 +1,11 @@
 const CACHE_NAME = 'insaf-travels-v1';
-const FILES_TO_CACHE = [
-  './insaf-voucher-v2.html',
-  './manifest.json'
-];
 
+const FILES_TO_CACHE = [
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
 // Install — cache all files
 self.addEventListener('install', event => {
   event.waitUntil(
