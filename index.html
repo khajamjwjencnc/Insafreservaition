@@ -332,6 +332,7 @@ body {
     <button class="tb-btn btn-edit" onclick="showTab('form')">✏️ Edit</button>
     <button class="tb-btn btn-prev" onclick="generateAndPreview()">👁 Preview</button>
     <button class="tb-btn btn-print" onclick="window.print()">🖨 Print / PDF</button>
+    <button class="tb-btn" id="save-fb-btn" onclick="saveVoucherToFirebase()" style="background:#9c27b0;color:#fff;">💾 Save to Firebase</button>
   </div>
 </div>
 
@@ -339,8 +340,8 @@ body {
 <div class="tabs">
   <div class="tab active" id="tab-form"    onclick="showTab('form')">📝 Fill Details</div>
   <div class="tab"        id="tab-preview" onclick="generateAndPreview()">📄 Voucher Preview</div>
+  <div class="tab"        id="tab-history" onclick="showTab('history');loadVouchers()">📂 History</div>
 </div>
-
 <!-- ══ FORM PANEL ══ -->
 <div class="panel active" id="panel-form">
 <div class="form-panel">
@@ -524,22 +525,6 @@ body {
     Thank you for your reservation on <strong>INSAF TRAVELS &amp; HOTEL MANAGEMENT</strong>
   </div>
 
-<!-- VOUCHER INPUT FORM -->
-
-<div class="voucher-form">
-
-  <input id="name" placeholder="Guest Name">
-
-  <input id="hotel" placeholder="Hotel Name">
-
-  <input id="checkin" type="date" placeholder="Arrival Date">
-
-  <input id="checkout" type="date" placeholder="Departure Date">
-
-  <button onclick="handleSave()">Save Voucher</button>
-
-</div>
-  
   <!-- BOOKING INFO -->
   <div class="p-booking">
     <div class="bi">
@@ -585,7 +570,7 @@ body {
     <span class="rv" id="v-remarks"></span>
   </div>
 
-  <!-- TERMS -->
+<!-- TERMS -->
   <div class="p-terms">
     * We hope that we have covered all your request waiting for your reply by the option date otherwise the reservation will be released automically without prior notice.<br/>
     * * Above Rates are quoted in Saudi Riyals, Net and non-commissionable.<br/>
@@ -730,7 +715,7 @@ body {
   }
 
   function showTab(t) {
-    ['form','preview'].forEach(x => {
+    ['form','preview','history'].forEach(x => {
       document.getElementById('panel-'+x).classList.remove('active');
       document.getElementById('tab-'+x).classList.remove('active');
     });
@@ -822,42 +807,145 @@ body {
   }
 </script>
 
-  <!-- Firebase CONFIG (STEP 2) -->
+  <!-- Firebase CONFIG -->
 <script>
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+  // Firebase CDN (compat version - works everywhere)
+  var firebaseLoaded = false;
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-</script>
+  function loadFirebase() {
+    return new Promise((resolve) => {
+      if (firebaseLoaded) { resolve(); return; }
+      var s1 = document.createElement('script');
+      s1.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js";
+      s1.onload = function() {
+        var s2 = document.createElement('script');
+        s2.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js";
+        s2.onload = function() {
+          var firebaseConfig = {
+            apiKey:            "AIzaSyAJBPGO7aYBjqX2R1ycEz45SQL63c8YeKQ",
+            authDomain:        "insafreservation.firebaseapp.com",
+            projectId:         "insafreservation",
+            storageBucket:     "insafreservation.firebasestorage.app",
+            messagingSenderId: "1090990996186",
+            appId:             "1:1090990996186:web:37b7cdec91f08b38a783e3"
+          };
+          if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+          firebaseLoaded = true;
+          resolve();
+        };
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s1);
+    });
+  }
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script> 
+  // Save voucher
+  async function saveVoucherToFirebase() {
+    const btn = document.getElementById('save-fb-btn');
+    btn.disabled = true; btn.textContent = '⏳ Loading...';
+    try {
+      await loadFirebase();
+      const g = id => document.getElementById(id)?.value?.trim() || '';
+      const db = firebase.firestore();
+      await db.collection("vouchers").add({
+        resNo:     g('f-resno'),
+        date:      g('f-date'),
+        to:        g('f-to'),
+        attn:      g('f-attn'),
+        from:      g('f-from'),
+        confType:  document.querySelector('input[name="conf-type"]:checked')?.value || '',
+        hotel:     g('f-hotel'),
+        guest:     g('f-guest'),
+        arrival:   g('f-arrival'),
+        departure: g('f-departure'),
+        nights:    g('f-nights'),
+        room1: { qty: g('f-qty1'), type: g('f-roomtype1'), rate: g('f-rate1'), meal: g('f-meal1') },
+        room2: { qty: g('f-qty2'), type: g('f-roomtype2'), rate: g('f-rate2'), meal: g('f-meal2') },
+        room3: { qty: g('f-qty3'), type: g('f-roomtype3'), rate: g('f-rate3'), meal: g('f-meal3') },
+        total:     g('f-total'),
+        paid:      g('f-paid'),
+        due:       g('f-due'),
+        remarks:   g('f-remarks'),
+        accName:   g('f-accname'),
+        bankName:  g('f-bankname'),
+        accNo:     g('f-accno'),
+        iban:      g('f-iban'),
+        swift:     g('f-swift'),
+        signedBy:  g('f-signedby'),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      btn.textContent = '✅ Saved!';
+      btn.style.background = '#2d8a4e';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = '💾 Save to Firebase';
+        btn.style.background = '#9c27b0';
+      }, 3000);
+    } catch(e) {
+      alert('❌ Error: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '💾 Save to Firebase';
+    }
+  }
 
-  <script>
-function saveVoucher(name, hotel, checkin, checkout) {
-  db.collection("vouchers").add({
-    name: name,
-    hotel: hotel,
-    checkin: checkin,
-    checkout: checkout,
-    res: "RES-" + Date.now(),
-    createdAt: new Date()
-  })
-  .then(() => {
-    alert("Voucher Saved!");
-  })
-  .catch((error) => {
-    console.log(error);
-  });
-}
+  // Load history
+  async function loadVouchers() {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:12px;color:#888;">Loading...</td></tr>';
+    try {
+      await loadFirebase();
+      const db = firebase.firestore();
+      const snap = await db.collection("vouchers").orderBy("createdAt", "desc").get();
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:12px;color:#888;">কোনো Voucher নেই।</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td>${d.resNo||''}</td><td>${d.date||''}</td><td>${d.guest||''}</td>` +
+          `<td>${d.hotel||''}</td><td>${d.arrival||''}–${d.departure||''}</td>` +
+          `<td style="font-weight:700;color:#1a3a6b;">SAR ${d.total||'0'}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:red;padding:12px;">Internet connection নেই বা Firebase error।</td></tr>`;
+    }
+  }
 </script>
   
+<!-- ══ HISTORY PANEL ══ -->
+<div class="panel" id="panel-history">
+  <div style="padding:100px 20px 60px; max-width:900px; margin:0 auto;">
+    <div style="background:#fff;border-radius:6px;padding:16px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.1);">
+      <h3 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#1a3a6b;border-bottom:2px solid #e87722;padding-bottom:7px;margin-bottom:14px;">
+        📂 Saved Vouchers (Firebase)
+      </h3>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#1a3a6b;color:#fff;">
+              <th style="padding:8px 10px;text-align:left;">Res No</th>
+              <th style="padding:8px 10px;text-align:left;">Date</th>
+              <th style="padding:8px 10px;text-align:left;">Guest</th>
+              <th style="padding:8px 10px;text-align:left;">Hotel</th>
+              <th style="padding:8px 10px;text-align:left;">Stay</th>
+              <th style="padding:8px 10px;text-align:left;">Total</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:20px;color:#888;">
+              History লোড করতে এই ট্যাব ক্লিক করুন
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
