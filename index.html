@@ -902,7 +902,8 @@ body {
     err.textContent = '';
     try {
       await loadFirebase();
-      await firebase.auth().signInWithEmailAndPassword(email, pass);
+     await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+     await firebase.auth().signInWithEmailAndPassword(email, pass);
     } catch(e) {
       err.textContent = '❌ Email বা Password ভুল!';
       btn.disabled = false; btn.textContent = '🔐 Login';
